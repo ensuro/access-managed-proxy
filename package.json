@@ -1,0 +1,24 @@
+{
+  "name": "access-managed-proxy",
+  "version": "0.1.0",
+  "scripts": {
+    "prettier": "prettier --write 'contracts/**/*.sol' --write 'test/**/*.js'",
+    "solhint": "solhint -w0 'contracts/**/*.sol'"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "hardhat": "^2.26.2",
+    "hardhat-contract-sizer": "^2.10.0",
+    "hardhat-dependency-compiler": "^1.2.1",
+    "prettier": "^3.6.2",
+    "solhint": "^6.0.0",
+    "solhint-plugin-prettier": "^0.1.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0"
+  }
+}

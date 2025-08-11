@@ -1,0 +1,28 @@
+{
+  "name": "@ensuro/access-managed-proxy",
+  "description": "Variant of ERC-1967 proxy with built-in access control using OZ 5.x AccessManager",
+  "version": "%%VERSION%%",
+  "files": [
+    "**/*.sol",
+    "/build",
+    "/js/*.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:ensuro/access-managed-proxy.git"
+  },
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "smart",
+    "contracts",
+    "decentralized",
+    "erc1967"
+  ],
+  "author": "Ensuro <guillermo@ensuro.co>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ensuro/access-managed-proxy/issues"
+  },
+  "homepage": "https://github.com/ensuro/access-managed-proxy#readme"
+}
