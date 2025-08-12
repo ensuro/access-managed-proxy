@@ -6,6 +6,7 @@
     "solhint": "solhint -w0 'contracts/**/*.sol'"
   },
   "devDependencies": {
+    "@ensuro/utils": "^0.2.9",
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@openzeppelin/hardhat-upgrades": "^3.9.1",
     "eslint": "^9.32.0",
