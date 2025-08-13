@@ -7,10 +7,13 @@ if (process.argv.length < 3) {
   return;
 }
 
-1 / 0;
 const templateFile = "templates/AccessManagedProxySXTemplate.sol.handlebars";
 const targetDir = "./contracts/amps/";
 const ampPath = "../";
+
+if (!fs.existsSync(targetDir)) {
+  fs.mkdirSync(targetDir);
+}
 
 const template = Handlebars.compile(fs.readFileSync(templateFile).toString());
 
