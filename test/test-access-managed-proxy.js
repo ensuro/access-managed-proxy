@@ -55,34 +55,36 @@ function randomSelector() {
   );
 }
 
-async function setUpAMP2(nMethods = 10) {
+async function setUpAMPSkip(nMethods) {
   const ret = await setUpCommon();
   const { admin, AccessManager, DummyImplementation } = ret;
-  const AccessManagedProxy2 = await ethers.getContractFactory("AccessManagedProxy2");
+  const AccessManagedProxySkip = await ethers.getContractFactory(`AccessManagedProxyS${nMethods}`);
   const acMgr = await AccessManager.deploy(admin);
+  const selector = DummyImplementation.interface.getFunction("callThruAMPSkippedMethod").selector;
+  const selectors = [...Array(nMethods - 1).keys()].map(randomSelector);
+  selectors.push(selector);
 
   async function deployProxy(implContract = DummyImplementation) {
-    const selector = implContract.interface.getFunction("callThruAMPSkippedMethod").selector;
-    const selectors = [...Array(nMethods - 1).keys()].map(randomSelector);
-    selectors.push(selector);
-    selectors.sort();
-    console.log("selectors", selectors, selector, selectors.indexOf(selector));
-    return hre.upgrades.deployProxy(implContract, [], {
+    const ret = await hre.upgrades.deployProxy(implContract, [], {
       kind: "uups",
       unsafeAllow: [
         "delegatecall",
         "missing-initializer-call", // This is to fix an error because it says we are not calling
         // parent initializer
       ],
-      proxyFactory: AccessManagedProxy2,
+      proxyFactory: AccessManagedProxySkip,
       deployFunction: async (hre_, opts, factory, ...args) =>
         ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr, selectors),
     });
+    const retAsAMP = AccessManagedProxySkip.attach(ret);
+    expect(await retAsAMP.PASS_THRU_METHODS()).to.deep.equal(selectors);
+    return ret;
   }
 
   return {
+    skipSelectors: selectors,
     acMgr,
-    AccessManagedProxy: AccessManagedProxy2,
+    AccessManagedProxy: AccessManagedProxySkip,
     deployProxy,
     ...ret,
   };
@@ -123,20 +125,26 @@ const variants = [
   { name: "NoProxy", fixture: setUpDirect, method: "callDirect", hasAC: false },
   { name: "AccessManagedProxy", fixture: setUpAMP, method: "callThruAMP", hasAC: true },
   { name: "ERC1967Proxy", fixture: setUpERC1967, method: "callThru1967", hasAC: false },
-  { name: "AccessManagedProxy2", fixture: setUpAMP2, method: "callThruAMPNonSkippedMethod", hasAC: true, isAMP2: true },
   {
-    name: "AccessManagedProxy2Long",
-    fixture: async () => setUpAMP2(24),
+    name: "AccessManagedProxyS10",
+    fixture: async () => setUpAMPSkip(10),
     method: "callThruAMPNonSkippedMethod",
     hasAC: true,
-    isAMP2: true,
+    hasSkippedMethod: true,
   },
   {
-    name: "AccessManagedProxy2Short",
-    fixture: async () => setUpAMP2(4),
+    name: "AccessManagedProxyS24",
+    fixture: async () => setUpAMPSkip(24),
     method: "callThruAMPNonSkippedMethod",
     hasAC: true,
-    isAMP2: true,
+    hasSkippedMethod: true,
+  },
+  {
+    name: "AccessManagedProxyS1",
+    fixture: async () => setUpAMPSkip(1),
+    method: "callThruAMPNonSkippedMethod",
+    hasAC: true,
+    hasSkippedMethod: true,
   },
 ];
 
@@ -179,13 +187,20 @@ variants.forEach((variant) => {
       await expect(dummy.connect(admin)[variant.method]()).to.emit(dummy, "MethodCalled").withArgs(methodSelector);
     });
 
-    it("Checks calling the method emits the log [?isAMP2]", async () => {
-      const { deployProxy, admin, DummyImplementation } = await helpers.loadFixture(variant.fixture);
+    it("Checks calling the skipped method with anon works [?hasSkippedMethod]", async () => {
+      const { deployProxy, anon, DummyImplementation } = await helpers.loadFixture(variant.fixture);
       const dummy = await deployProxy();
       const methodSelector = DummyImplementation.interface.getFunction("callThruAMPSkippedMethod").selector;
-      await expect(dummy.connect(admin)["callThruAMPSkippedMethod"]())
+      await expect(dummy.connect(anon)["callThruAMPSkippedMethod"]())
         .to.emit(dummy, "MethodCalled")
         .withArgs(methodSelector);
+    });
+
+    it("Checks skipped methods are observable calling PASS_THRU_METHODS [?hasSkippedMethod]", async () => {
+      const { deployProxy, skipSelectors, AccessManagedProxy } = await helpers.loadFixture(variant.fixture);
+      const dummy = await deployProxy();
+      const dummyAsAMP = AccessManagedProxy.attach(dummy);
+      expect(await dummyAsAMP.PASS_THRU_METHODS()).to.deep.equal(skipSelectors);
     });
   });
 });

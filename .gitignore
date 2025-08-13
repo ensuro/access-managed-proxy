@@ -17,3 +17,6 @@ node_modules
 ignition/deployments/chain-31337
 
 soljson-latest.js
+
+# AMP generated files
+contracts/amps/*.sol
