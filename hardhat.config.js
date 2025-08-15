@@ -1,6 +1,7 @@
 require("@openzeppelin/hardhat-upgrades");
 require("hardhat-dependency-compiler");
 require("hardhat-contract-sizer");
+require("hardhat-ignore-warnings");
 require("@nomicfoundation/hardhat-toolbox");
 
 /** @type import('hardhat/config').HardhatUserConfig */
@@ -21,8 +22,16 @@ module.exports = {
     disambiguatePaths: false,
   },
   dependencyCompiler: {
-    paths: [
-      "@openzeppelin/contracts/access/manager/AccessManager.sol",
-    ],
+    paths: ["@openzeppelin/contracts/access/manager/AccessManager.sol"],
+  },
+  warnings: {
+    "contracts/AccessManagedProxy.sol": {
+      "missing-receive": "off",
+      "unused-param": "off",
+    },
+    "contracts/amps/AccessManagedProxyS*.sol": {
+      "missing-receive": "off",
+      "unused-param": "off",
+    },
   },
 };

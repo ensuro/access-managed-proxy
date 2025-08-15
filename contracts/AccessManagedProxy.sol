@@ -62,8 +62,24 @@ contract AccessManagedProxy is ERC1967Proxy {
    * This function does not return to its internal call site, it will return directly to the external caller.
    */
   function _delegate(address implementation) internal virtual override {
-    (bool immediate, ) = ACCESS_MANAGER.canCall(msg.sender, address(this), bytes4(msg.data[0:4]));
-    if (!immediate) revert AccessManagedUnauthorized(msg.sender);
+    bytes4 selector = bytes4(msg.data[0:4]);
+    bool immediate = _skipAC(selector); // reuse immediate variable both for skipped methods and canCall result
+    if (!immediate) {
+      (immediate, ) = ACCESS_MANAGER.canCall(msg.sender, address(this), selector);
+      if (!immediate) revert AccessManagedUnauthorized(msg.sender);
+    }
     super._delegate(implementation);
+  }
+
+  /**
+   * @notice Returns whether to skip the access control validation or not
+   * @dev Hook called before ACCESS_MANAGER.canCall to enable skipping the call to the access manager for performance
+   *      reasons (for example on views) or to remove access control for other specific cases
+   * @param selector The selector of the method called
+   * @return Whether the access control using ACCESS_MANAGER should be skipped or not
+   */
+  // solhint-disable-next-line no-unused-vars
+  function _skipAC(bytes4 selector) internal view virtual returns (bool) {
+    return false;
   }
 }
