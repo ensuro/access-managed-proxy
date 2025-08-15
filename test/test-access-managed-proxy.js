@@ -4,6 +4,7 @@ const hre = require("hardhat");
 const { ethers } = hre;
 const { tagitVariant, setupAMRole } = require("@ensuro/utils/js/utils");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
+const { deployAMPProxy } = require("../js/deployProxy");
 const { deploy: ozUpgradesDeploy } = require("@openzeppelin/hardhat-upgrades/dist/utils");
 
 async function setUpCommon() {
@@ -25,17 +26,8 @@ async function setUpAMP() {
   const { admin, AccessManager, DummyImplementation } = ret;
   const acMgr = await AccessManager.deploy(admin);
 
-  async function deployProxy(implContract = DummyImplementation) {
-    return hre.upgrades.deployProxy(implContract, [], {
-      kind: "uups",
-      unsafeAllow: [
-        "delegatecall",
-        "missing-initializer-call", // This is to fix an error because it says we are not calling
-        // parent initializer
-      ],
-      proxyFactory: AccessManagedProxy,
-      deployFunction: async (hre_, opts, factory, ...args) => ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr),
-    });
+  async function deployProxy() {
+    return deployAMPProxy(DummyImplementation, [], { acMgr });
   }
 
   return {
@@ -55,7 +47,7 @@ function randomSelector() {
   );
 }
 
-async function setUpAMPSkip(nMethods) {
+async function setUpAMPSkip(nMethods, skipViewsAndPure = false) {
   const ret = await setUpCommon();
   const { admin, AccessManager, DummyImplementation } = ret;
   const AccessManagedProxySkip = await ethers.getContractFactory(`AccessManagedProxyS${nMethods}`);
@@ -64,21 +56,8 @@ async function setUpAMPSkip(nMethods) {
   const selectors = [...Array(nMethods - 1).keys()].map(randomSelector);
   selectors.push(selector);
 
-  async function deployProxy(implContract = DummyImplementation) {
-    const ret = await hre.upgrades.deployProxy(implContract, [], {
-      kind: "uups",
-      unsafeAllow: [
-        "delegatecall",
-        "missing-initializer-call", // This is to fix an error because it says we are not calling
-        // parent initializer
-      ],
-      proxyFactory: AccessManagedProxySkip,
-      deployFunction: async (hre_, opts, factory, ...args) =>
-        ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr, selectors),
-    });
-    const retAsAMP = AccessManagedProxySkip.attach(ret);
-    expect(await retAsAMP.PASS_THRU_METHODS()).to.deep.equal(selectors);
-    return ret;
+  async function deployProxy() {
+    return deployAMPProxy(DummyImplementation, [], { acMgr, skipMethods: selectors, skipViewsAndPure });
   }
 
   return {
@@ -146,6 +125,14 @@ const variants = [
     hasAC: true,
     hasSkippedMethod: true,
   },
+  {
+    name: "AccessManagedProxyS1-skipViews",
+    fixture: async () => setUpAMPSkip(1, true),
+    method: "callThruAMPNonSkippedMethod",
+    hasAC: true,
+    hasSkippedMethod: true,
+    hasViews: true,
+  },
 ];
 
 variants.forEach((variant) => {
@@ -197,10 +184,36 @@ variants.forEach((variant) => {
     });
 
     it("Checks skipped methods are observable calling PASS_THRU_METHODS [?hasSkippedMethod]", async () => {
-      const { deployProxy, skipSelectors, AccessManagedProxy } = await helpers.loadFixture(variant.fixture);
+      const { deployProxy, skipSelectors, AccessManagedProxy, DummyImplementation } = await helpers.loadFixture(
+        variant.fixture
+      );
       const dummy = await deployProxy();
       const dummyAsAMP = AccessManagedProxy.attach(dummy);
-      expect(await dummyAsAMP.PASS_THRU_METHODS()).to.deep.equal(skipSelectors);
+      if (variant.hasViews) {
+        const expectedSelectors = ["UPGRADE_INTERFACE_VERSION", "proxiableUUID", "pureMethod", "viewMethod"]
+          .map((methodName) => DummyImplementation.interface.getFunction(methodName).selector)
+          .concat(skipSelectors);
+        expect(await dummyAsAMP.PASS_THRU_METHODS()).to.deep.equal(expectedSelectors);
+      } else {
+        expect(await dummyAsAMP.PASS_THRU_METHODS()).to.deep.equal(skipSelectors);
+      }
+    });
+
+    it("Checks access to views [?hasAC]", async () => {
+      const { deployProxy, anon, AccessManagedProxy } = await helpers.loadFixture(variant.fixture);
+      const dummy = await deployProxy();
+      if (variant.hasViews) {
+        expect(await dummy.connect(anon).viewMethod()).to.equal(anon);
+        expect(await dummy.connect(anon).pureMethod()).to.equal(123456n);
+      } else {
+        const dummyAsAMP = AccessManagedProxy.attach(dummy);
+        await expect(dummy.connect(anon).viewMethod())
+          .to.be.revertedWithCustomError(dummyAsAMP, "AccessManagedUnauthorized")
+          .withArgs(anon);
+        await expect(dummy.connect(anon).pureMethod())
+          .to.be.revertedWithCustomError(dummyAsAMP, "AccessManagedUnauthorized")
+          .withArgs(anon);
+      }
     });
   });
 });

@@ -42,4 +42,12 @@ contract DummyImplementation is UUPSUpgradeable {
   function callThruAMPNonSkippedMethod() external {
     emit MethodCalled(this.callThruAMPNonSkippedMethod.selector);
   }
+
+  function viewMethod() external view returns (address) {
+    return msg.sender;
+  }
+
+  function pureMethod() external pure returns (uint256) {
+    return 123456;
+  }
 }
