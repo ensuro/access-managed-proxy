@@ -49,7 +49,7 @@ contract AccessManagedProxyS{{ numOfSkipMethods }} is AccessManagedProxy {
    * @param selector The selector of the method called
    * @return Whether the access control using ACCESS_MANAGER should be skipped or not
    */
-  function _skipMethod(bytes4 selector) internal view override returns (bool) {
+  function _skipAC(bytes4 selector) internal view override returns (bool) {
     return
       {{#each zeroToN}}
       selector == PASS_THRU_METHODS_{{this}}{{#if @last}};{{else}} ||{{/if}}

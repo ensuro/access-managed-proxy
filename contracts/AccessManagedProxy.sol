@@ -63,7 +63,7 @@ contract AccessManagedProxy is ERC1967Proxy {
    */
   function _delegate(address implementation) internal virtual override {
     bytes4 selector = bytes4(msg.data[0:4]);
-    bool immediate = _skipMethod(selector); // reuse immediate variable both for skipped methods and canCall result
+    bool immediate = _skipAC(selector); // reuse immediate variable both for skipped methods and canCall result
     if (!immediate) {
       (immediate, ) = ACCESS_MANAGER.canCall(msg.sender, address(this), selector);
       if (!immediate) revert AccessManagedUnauthorized(msg.sender);
@@ -79,7 +79,7 @@ contract AccessManagedProxy is ERC1967Proxy {
    * @return Whether the access control using ACCESS_MANAGER should be skipped or not
    */
   // solhint-disable-next-line no-unused-vars
-  function _skipMethod(bytes4 selector) internal view virtual returns (bool) {
+  function _skipAC(bytes4 selector) internal view virtual returns (bool) {
     return false;
   }
 }
