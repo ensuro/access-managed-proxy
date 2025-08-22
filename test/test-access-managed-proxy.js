@@ -4,8 +4,7 @@ const hre = require("hardhat");
 const { ethers } = hre;
 const { tagitVariant, setupAMRole } = require("@ensuro/utils/js/utils");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
-const { deployAMPProxy } = require("../js/deployProxy");
-const { deploy: ozUpgradesDeploy } = require("@openzeppelin/hardhat-upgrades/dist/utils");
+const { deployAMPProxy, attachAsAMP } = require("../js/deployProxy");
 
 async function setUpCommon() {
   const [admin, anon] = await ethers.getSigners();
@@ -119,6 +118,13 @@ const variants = [
     hasSkippedMethod: true,
   },
   {
+    name: "AccessManagedProxyS40",
+    fixture: async () => setUpAMPSkip(40),
+    method: "callThruAMPNonSkippedMethod",
+    hasAC: true,
+    hasSkippedMethod: true,
+  },
+  {
     name: "AccessManagedProxyS1",
     fixture: async () => setUpAMPSkip(1),
     method: "callThruAMPNonSkippedMethod",
@@ -206,7 +212,7 @@ variants.forEach((variant) => {
         expect(await dummy.connect(anon).viewMethod()).to.equal(anon);
         expect(await dummy.connect(anon).pureMethod()).to.equal(123456n);
       } else {
-        const dummyAsAMP = AccessManagedProxy.attach(dummy);
+        const dummyAsAMP = await attachAsAMP(dummy);
         await expect(dummy.connect(anon).viewMethod())
           .to.be.revertedWithCustomError(dummyAsAMP, "AccessManagedUnauthorized")
           .withArgs(anon);

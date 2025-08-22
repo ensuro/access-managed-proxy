@@ -19,13 +19,13 @@ rm -fr $TARGET_DIR 2>/dev/null
 
 mkdir -p $TARGET_DIR
 
-# Generate 1 to 24 skip method contracts
-node scripts/generateAMPSkips.js $(seq -s" " 1 24)
+# Generate 1 to 40 skip method contracts
+node scripts/generateAMPSkips.js $(seq -s" " 1 40)
 
 npx hardhat clean
 env COMPILE_MODE=production npx hardhat compile
 
-git archive --format tar HEAD README.md contracts/ | tar xv -C $TARGET_DIR
+git archive --format tar HEAD README.md contracts/ js/ | tar xv -C $TARGET_DIR
 cp -r contracts/amps $TARGET_DIR/contracts
 # rm -fR $TARGET_DIR/contracts/mocks/
 

@@ -44,7 +44,7 @@ async function deployAMPProxy(contractFactory, initializeArgs = [], opts = {}) {
     deployFunction = async (hre_, opts, factory, ...args) => ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr);
   }
 
-  return hre.upgrades.deployProxy(contractFactory, [], {
+  return hre.upgrades.deployProxy(contractFactory, initializeArgs, {
     ...opts,
     kind: "uups",
     proxyFactory,
@@ -52,6 +52,24 @@ async function deployAMPProxy(contractFactory, initializeArgs = [], opts = {}) {
   });
 }
 
+async function attachAsAMP(contract, ampContractFactory = undefined) {
+  ampContractFactory = ampContractFactory || (await ethers.getContractFactory("AccessManagedProxyS1"));
+  return ampContractFactory.attach(contract);
+}
+
+async function getAccessManager(contract, ampContractFactory = undefined, accessManagerFactory="AccessManager") {
+  const contractAsAMP = await attachAsAMP(contract, ampContractFactory);
+  return ethers.getContractAt(accessManagerFactory, await contractAsAMP.ACCESS_MANAGER());
+}
+
+function makeSelector(role) {
+  return ethers.keccak256(ethers.toUtf8Bytes(role)).slice(0, 10);
+}
+
+
 module.exports = {
   deployAMPProxy,
+  attachAsAMP,
+  getAccessManager,
+  makeSelector,
 };
