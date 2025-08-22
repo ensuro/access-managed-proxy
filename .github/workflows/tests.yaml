@@ -22,4 +22,9 @@ jobs:
       - run: npx hardhat test
         env:
           REPORT_GAS: "1"
+      - name: Clean to avoid sol-coverage error with AccessManagedProxyS40
+        run: |
+          npx hardhat clean
+          rm contracts/amps/*.sol
+          node scripts/generateAMPSkips.js 1 5 10 24
       - run: npx hardhat coverage
