@@ -118,6 +118,13 @@ const variants = [
     hasSkippedMethod: true,
   },
   {
+    name: "AccessManagedProxyS40",
+    fixture: async () => setUpAMPSkip(40),
+    method: "callThruAMPNonSkippedMethod",
+    hasAC: true,
+    hasSkippedMethod: true,
+  },
+  {
     name: "AccessManagedProxyS1",
     fixture: async () => setUpAMPSkip(1),
     method: "callThruAMPNonSkippedMethod",
