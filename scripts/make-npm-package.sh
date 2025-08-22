@@ -25,7 +25,7 @@ node scripts/generateAMPSkips.js $(seq -s" " 1 24)
 npx hardhat clean
 env COMPILE_MODE=production npx hardhat compile
 
-git archive --format tar HEAD README.md contracts/ | tar xv -C $TARGET_DIR
+git archive --format tar HEAD README.md contracts/ js/ | tar xv -C $TARGET_DIR
 cp -r contracts/amps $TARGET_DIR/contracts
 # rm -fR $TARGET_DIR/contracts/mocks/
 

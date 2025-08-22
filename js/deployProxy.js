@@ -52,6 +52,12 @@ async function deployAMPProxy(contractFactory, initializeArgs = [], opts = {}) {
   });
 }
 
+async function attachAsAMP(contract, ampContractFactory = undefined) {
+  ampContractFactory = ampContractFactory || (await ethers.getContractFactory("AccessManagedProxyS1"));
+  return ampContractFactory.attach(contract);
+}
+
 module.exports = {
   deployAMPProxy,
+  attachAsAMP,
 };
