@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
-import {AccessManagedProxyM} from "./AccessManagedProxyM.sol";
+import {AccessManagedProxyBase} from "./AccessManagedProxyBase.sol";
 
 /**
  * @title AccessManagedProxyMS
@@ -11,9 +11,10 @@ import {AccessManagedProxyM} from "./AccessManagedProxyM.sol";
  * @custom:security-contact security@ensuro.co
  * @author Ensuro
  */
-contract AccessManagedProxyMS is AccessManagedProxyM {
+contract AccessManagedProxyMS is AccessManagedProxyBase {
   /// @custom:storage-location erc7201:ensuro.storage.AccessManagedProxyMS
   struct AccessManagedProxyMSStorage {
+    IAccessManager accessManager;
     bytes4[] passThruMethods;
     mapping(bytes4 => bool) skipAc;
   }
@@ -31,12 +32,12 @@ contract AccessManagedProxyMS is AccessManagedProxyM {
   /**
    * @notice Constructor of the proxy, defining the implementation and the access manager
    * @dev Initializes the upgradeable proxy with an initial implementation specified by `implementation` and
-   *      with `manager` as the ACCESS_MANAGER that will handle access control.
+   *      with `accessManager` as the ACCESS_MANAGER that will handle access control.
    *
    * @param implementation The initial implementation contract.
    * @param _data If nonempty, it's used as data in a delegate call to `implementation`. This will typically be an
    *              encoded function call, and allows initializing the storage of the proxy like a Solidity constructor.
-   * @param manager The access manager that will handle access control
+   * @param accessManager The access manager that will handle access control
    * @param passThruMethods The selector of methods that will skip the access control validation, typically used for
    *                        views and other methods for gas optimization.
    *
@@ -47,10 +48,11 @@ contract AccessManagedProxyMS is AccessManagedProxyM {
   constructor(
     address implementation,
     bytes memory _data,
-    IAccessManager manager,
+    IAccessManager accessManager,
     bytes4[] memory passThruMethods
-  ) payable AccessManagedProxyM(implementation, _data, manager) {
+  ) payable AccessManagedProxyBase(implementation, _data) {
     AccessManagedProxyMSStorage storage $ = _getAccessManagedProxyMSStorage();
+    $.accessManager = accessManager;
     $.passThruMethods = new bytes4[](passThruMethods.length);
     for (uint256 i; i < passThruMethods.length; ++i) {
       $.passThruMethods[i] = passThruMethods[i];
@@ -83,5 +85,10 @@ contract AccessManagedProxyMS is AccessManagedProxyM {
   // solhint-disable-next-line func-name-mixedcase
   function PASS_THRU_METHODS() external view returns (bytes4[] memory methods) {
     return _getAccessManagedProxyMSStorage().passThruMethods;
+  }
+
+  // solhint-disable-next-line func-name-mixedcase
+  function ACCESS_MANAGER() public view override returns (IAccessManager) {
+    return _getAccessManagedProxyMSStorage().accessManager;
   }
 }
