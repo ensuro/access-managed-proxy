@@ -36,11 +36,11 @@ async function deployAMPProxy(contractFactory, initializeArgs = [], opts = {}) {
   }
   let proxyFactory, deployFunction;
   if (skipSelectors.length > 0) {
-    proxyFactory = await ethers.getContractFactory(`AccessManagedProxyS${skipSelectors.length}`);
+    proxyFactory = await ethers.getContractFactory(opts.proxyClass || `AccessManagedProxyS${skipSelectors.length}`);
     deployFunction = async (hre_, opts, factory, ...args) =>
       ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr, skipSelectors);
   } else {
-    proxyFactory = await ethers.getContractFactory("AccessManagedProxy");
+    proxyFactory = await ethers.getContractFactory(opts.proxyClass || "AccessManagedProxy");
     deployFunction = async (hre_, opts, factory, ...args) => ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr);
   }
 
@@ -57,7 +57,7 @@ async function attachAsAMP(contract, ampContractFactory = undefined) {
   return ampContractFactory.attach(contract);
 }
 
-async function getAccessManager(contract, ampContractFactory = undefined, accessManagerFactory="AccessManager") {
+async function getAccessManager(contract, ampContractFactory = undefined, accessManagerFactory = "AccessManager") {
   const contractAsAMP = await attachAsAMP(contract, ampContractFactory);
   return ethers.getContractAt(accessManagerFactory, await contractAsAMP.ACCESS_MANAGER());
 }
@@ -65,7 +65,6 @@ async function getAccessManager(contract, ampContractFactory = undefined, access
 function makeSelector(role) {
   return ethers.keccak256(ethers.toUtf8Bytes(role)).slice(0, 10);
 }
-
 
 module.exports = {
   deployAMPProxy,

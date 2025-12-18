@@ -2,19 +2,19 @@
 pragma solidity ^0.8.0;
 
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
 import {AccessManagedProxyBase} from "./AccessManagedProxyBase.sol";
 
 /**
- * @title AccessManagedProxy
- * @notice Proxy contract using IAccessManager to manage access control before delegating calls (immutable version)
+ * @title AccessManagedProxyM
+ * @notice Proxy contract using IAccessManager to manage access control before delegating calls (mutable version)
  * @dev It's a variant of ERC1967Proxy.
  *
  *      Currently the check is executed on any call received by the proxy contract even calls to view methods
  *      (staticcall). In the setup of the ACCESS_MANAGER permissions you would want to make all the views and pure
  *      functions enabled for the PUBLIC_ROLE.
  *
- *      For gas efficiency, the ACCESS_MANAGER is immutable, so take care you don't lose control of it, otherwise
- *      it will make your contract inaccesible or other bad things will happen.
+ *      The access manager can be changed by calling setAuthority
  *
  *      Check https://forum.openzeppelin.com/t/accessmanagedproxy-is-a-good-idea/41917 for a discussion on the
  *      advantages and disadvantages of using it.
@@ -22,11 +22,15 @@ import {AccessManagedProxyBase} from "./AccessManagedProxyBase.sol";
  * @custom:security-contact security@ensuro.co
  * @author Ensuro
  */
-contract AccessManagedProxy is AccessManagedProxyBase {
+contract AccessManagedProxyM is AccessManagedProxyBase {
   /**
-   * @notice AccessManager contract that handles the permissions to access the implementation methods
+   * @notice Storage slot with the address of the current access mananger.
+   * @dev Computed as: `keccak256(
+   *    abi.encode(uint256(keccak256("ensuro.storage.AccessManagedProxyM.ACCESS_MANAGER")) - 1)
+   * ) & ~bytes32(uint256(0xff))
    */
-  IAccessManager internal immutable _accessManager;
+  // solhint-disable-next-line const-name-snakecase
+  bytes32 internal constant ACCESS_MANAGER_SLOT = 0x2518994648e4a29af35d5d1b4b15a541173b8fabed9d3f7e10411447417eb800;
 
   /**
    * @notice Constructor of the proxy, defining the implementation and the access manager
@@ -45,10 +49,10 @@ contract AccessManagedProxy is AccessManagedProxyBase {
     bytes memory _data,
     IAccessManager manager
   ) payable AccessManagedProxyBase(implementation, _data) {
-    _accessManager = manager;
+    StorageSlot.getAddressSlot(ACCESS_MANAGER_SLOT).value = address(manager);
   }
 
   function ACCESS_MANAGER() public view override returns (IAccessManager) {
-    return _accessManager;
+    return IAccessManager(StorageSlot.getAddressSlot(ACCESS_MANAGER_SLOT).value);
   }
 }

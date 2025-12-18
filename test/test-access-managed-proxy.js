@@ -9,12 +9,14 @@ const { deployAMPProxy, attachAsAMP } = require("../js/deployProxy");
 async function setUpCommon() {
   const [admin, anon] = await ethers.getSigners();
   const DummyImplementation = await ethers.getContractFactory("DummyImplementation");
+  const DummyAccessManaged = await ethers.getContractFactory("DummyAccessManaged");
   const AccessManager = await ethers.getContractFactory("AccessManager");
 
   return {
     admin,
     anon,
     AccessManager,
+    DummyAccessManaged,
     DummyImplementation,
   };
 }
@@ -34,6 +36,26 @@ async function setUpAMP() {
     AccessManagedProxy,
     deployProxy,
     ...ret,
+  };
+}
+
+async function setUpAMPM() {
+  const ret = await setUpCommon();
+  const DummyImplementation = await ethers.getContractFactory("DummyImplementationAMPM");
+  const AccessManagedProxy = await ethers.getContractFactory("AccessManagedProxyM");
+  const { admin, AccessManager } = ret;
+  const acMgr = await AccessManager.deploy(admin);
+
+  async function deployProxy() {
+    return deployAMPProxy(DummyImplementation, [], { acMgr, proxyClass: "AccessManagedProxyM" });
+  }
+
+  return {
+    ...ret,
+    acMgr,
+    AccessManagedProxy,
+    deployProxy,
+    DummyImplementation,
   };
 }
 
@@ -68,6 +90,35 @@ async function setUpAMPSkip(nMethods, skipViewsAndPure = false) {
   };
 }
 
+async function setUpAMPMSkip(nMethods, skipViewsAndPure = false) {
+  const ret = await setUpCommon();
+  const { admin, AccessManager } = ret;
+  const AccessManagedProxySkip = await ethers.getContractFactory(`AccessManagedProxyMS`);
+  const acMgr = await AccessManager.deploy(admin);
+  const DummyImplementation = await ethers.getContractFactory("DummyImplementationAMPM");
+  const selector = DummyImplementation.interface.getFunction("callThruAMPSkippedMethod").selector;
+  const selectors = [...Array(nMethods - 1).keys()].map(randomSelector);
+  selectors.push(selector);
+
+  async function deployProxy() {
+    return deployAMPProxy(DummyImplementation, [], {
+      acMgr,
+      skipMethods: selectors,
+      skipViewsAndPure,
+      proxyClass: "AccessManagedProxyMS",
+    });
+  }
+
+  return {
+    ...ret,
+    DummyImplementation,
+    skipSelectors: selectors,
+    acMgr,
+    AccessManagedProxy: AccessManagedProxySkip,
+    deployProxy,
+  };
+}
+
 async function setUpDirect() {
   const ret = await setUpCommon();
 
@@ -98,10 +149,35 @@ async function setUpERC1967() {
   };
 }
 
+async function setUpDummyAccessManaged() {
+  const ret = await setUpCommon();
+  const { admin, AccessManager } = ret;
+  const acMgr = await AccessManager.deploy(admin);
+
+  async function deployProxy(implContract = ret.DummyAccessManaged) {
+    const contract = await hre.upgrades.deployProxy(implContract, [await ethers.resolveAddress(acMgr)], {
+      kind: "uups",
+    });
+    // Make the method public
+    // const PUBLIC_ROLE = await acMgr.PUBLIC_ROLE();
+    // const selector = ret.DummyAccessManaged.interface.getFunction("callThruAMP").selector;
+    // await acMgr.setTargetFunctionRole(contract, [selector], PUBLIC_ROLE);
+    return contract;
+  }
+
+  return {
+    acMgr,
+    deployProxy,
+    ...ret,
+  };
+}
+
 // const variants = [{ name: "NoProxy" }, { name: "ERC1967Proxy" }, { name: "AccessManagedProxy" }];
 const variants = [
   { name: "NoProxy", fixture: setUpDirect, method: "callDirect", hasAC: false },
   { name: "AccessManagedProxy", fixture: setUpAMP, method: "callThruAMP", hasAC: true },
+  { name: "AccessManagedProxy - Mutable", fixture: setUpAMPM, method: "callThruAMPM", hasAC: true },
+  { name: "DummyAccessManaged", fixture: setUpDummyAccessManaged, method: "callThruAMP", hasAC: false },
   { name: "ERC1967Proxy", fixture: setUpERC1967, method: "callThru1967", hasAC: false },
   {
     name: "AccessManagedProxyS10",
@@ -134,6 +210,21 @@ const variants = [
   {
     name: "AccessManagedProxyS1-skipViews",
     fixture: async () => setUpAMPSkip(1, true),
+    method: "callThruAMPNonSkippedMethod",
+    hasAC: true,
+    hasSkippedMethod: true,
+    hasViews: true,
+  },
+  {
+    name: "AccessManagedProxyMS40",
+    fixture: async () => setUpAMPMSkip(40),
+    method: "callThruAMPNonSkippedMethod",
+    hasAC: true,
+    hasSkippedMethod: true,
+  },
+  {
+    name: "AccessManagedProxyMS1-skipViews",
+    fixture: async () => setUpAMPMSkip(1, true),
     method: "callThruAMPNonSkippedMethod",
     hasAC: true,
     hasSkippedMethod: true,
