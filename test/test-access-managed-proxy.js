@@ -39,26 +39,6 @@ async function setUpAMP() {
   };
 }
 
-async function setUpAMPM() {
-  const ret = await setUpCommon();
-  const DummyImplementation = await ethers.getContractFactory("DummyImplementationAMPM");
-  const AccessManagedProxy = await ethers.getContractFactory("AccessManagedProxyM");
-  const { admin, AccessManager } = ret;
-  const acMgr = await AccessManager.deploy(admin);
-
-  async function deployProxy() {
-    return deployAMPProxy(DummyImplementation, [], { acMgr, proxyClass: "AccessManagedProxyM" });
-  }
-
-  return {
-    ...ret,
-    acMgr,
-    AccessManagedProxy,
-    deployProxy,
-    DummyImplementation,
-  };
-}
-
 function randomSelector() {
   return (
     "0x" +
@@ -71,7 +51,7 @@ function randomSelector() {
 async function setUpAMPSkip(nMethods, skipViewsAndPure = false) {
   const ret = await setUpCommon();
   const { admin, AccessManager, DummyImplementation } = ret;
-  const AccessManagedProxySkip = await ethers.getContractFactory(`AccessManagedProxyS${nMethods}`);
+  const AccessManagedProxy = await ethers.getContractFactory("AccessManagedProxy");
   const acMgr = await AccessManager.deploy(admin);
   const selector = DummyImplementation.interface.getFunction("callThruAMPSkippedMethod").selector;
   const selectors = [...Array(nMethods - 1).keys()].map(randomSelector);
@@ -84,38 +64,9 @@ async function setUpAMPSkip(nMethods, skipViewsAndPure = false) {
   return {
     skipSelectors: selectors,
     acMgr,
-    AccessManagedProxy: AccessManagedProxySkip,
+    AccessManagedProxy,
     deployProxy,
     ...ret,
-  };
-}
-
-async function setUpAMPMSkip(nMethods, skipViewsAndPure = false) {
-  const ret = await setUpCommon();
-  const { admin, AccessManager } = ret;
-  const AccessManagedProxySkip = await ethers.getContractFactory(`AccessManagedProxyMS`);
-  const acMgr = await AccessManager.deploy(admin);
-  const DummyImplementation = await ethers.getContractFactory("DummyImplementationAMPM");
-  const selector = DummyImplementation.interface.getFunction("callThruAMPSkippedMethod").selector;
-  const selectors = [...Array(nMethods - 1).keys()].map(randomSelector);
-  selectors.push(selector);
-
-  async function deployProxy() {
-    return deployAMPProxy(DummyImplementation, [], {
-      acMgr,
-      skipMethods: selectors,
-      skipViewsAndPure,
-      proxyClass: "AccessManagedProxyMS",
-    });
-  }
-
-  return {
-    ...ret,
-    DummyImplementation,
-    skipSelectors: selectors,
-    acMgr,
-    AccessManagedProxy: AccessManagedProxySkip,
-    deployProxy,
   };
 }
 
@@ -172,59 +123,21 @@ async function setUpDummyAccessManaged() {
   };
 }
 
-// const variants = [{ name: "NoProxy" }, { name: "ERC1967Proxy" }, { name: "AccessManagedProxy" }];
 const variants = [
   { name: "NoProxy", fixture: setUpDirect, method: "callDirect", hasAC: false },
-  { name: "AccessManagedProxy", fixture: setUpAMP, method: "callThruAMP", hasAC: true },
-  { name: "AccessManagedProxy - Mutable", fixture: setUpAMPM, method: "callThruAMPM", hasAC: true },
-  { name: "DummyAccessManaged", fixture: setUpDummyAccessManaged, method: "callThruAMP", hasAC: false },
   { name: "ERC1967Proxy", fixture: setUpERC1967, method: "callThru1967", hasAC: false },
+  { name: "DummyAccessManaged", fixture: setUpDummyAccessManaged, method: "callThruAMP", hasAC: false },
+  { name: "AccessManagedProxy", fixture: setUpAMP, method: "callThruAMP", hasAC: true },
   {
-    name: "AccessManagedProxyS10",
-    fixture: async () => setUpAMPSkip(10),
-    method: "callThruAMPNonSkippedMethod",
-    hasAC: true,
-    hasSkippedMethod: true,
-  },
-  {
-    name: "AccessManagedProxyS24",
-    fixture: async () => setUpAMPSkip(24),
-    method: "callThruAMPNonSkippedMethod",
-    hasAC: true,
-    hasSkippedMethod: true,
-  },
-  {
-    name: "AccessManagedProxyS40",
+    name: "AccessManagedProxyMS40",
     fixture: async () => setUpAMPSkip(40),
     method: "callThruAMPNonSkippedMethod",
     hasAC: true,
     hasSkippedMethod: true,
   },
   {
-    name: "AccessManagedProxyS1",
-    fixture: async () => setUpAMPSkip(1),
-    method: "callThruAMPNonSkippedMethod",
-    hasAC: true,
-    hasSkippedMethod: true,
-  },
-  {
-    name: "AccessManagedProxyS1-skipViews",
-    fixture: async () => setUpAMPSkip(1, true),
-    method: "callThruAMPNonSkippedMethod",
-    hasAC: true,
-    hasSkippedMethod: true,
-    hasViews: true,
-  },
-  {
-    name: "AccessManagedProxyMS40",
-    fixture: async () => setUpAMPMSkip(40),
-    method: "callThruAMPNonSkippedMethod",
-    hasAC: true,
-    hasSkippedMethod: true,
-  },
-  {
     name: "AccessManagedProxyMS1-skipViews",
-    fixture: async () => setUpAMPMSkip(1, true),
+    fixture: async () => setUpAMPSkip(1, true),
     method: "callThruAMPNonSkippedMethod",
     hasAC: true,
     hasSkippedMethod: true,

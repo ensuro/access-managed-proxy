@@ -15,16 +15,10 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: node scripts/generateAMPSkips.js 1 5 10 24 40
       - run: npx hardhat compile
       - run: npx hardhat size-contracts
       - run: npm run solhint
       - run: npx hardhat test
         env:
           REPORT_GAS: "1"
-      - name: Clean to avoid sol-coverage error with AccessManagedProxyS40
-        run: |
-          npx hardhat clean
-          rm contracts/amps/*.sol
-          node scripts/generateAMPSkips.js 1 5 10 24
       - run: npx hardhat coverage

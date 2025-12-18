@@ -35,14 +35,9 @@ async function deployAMPProxy(contractFactory, initializeArgs = [], opts = {}) {
     );
   }
   let proxyFactory, deployFunction;
-  if (skipSelectors.length > 0) {
-    proxyFactory = await ethers.getContractFactory(opts.proxyClass || `AccessManagedProxyS${skipSelectors.length}`);
-    deployFunction = async (hre_, opts, factory, ...args) =>
-      ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr, skipSelectors);
-  } else {
-    proxyFactory = await ethers.getContractFactory(opts.proxyClass || "AccessManagedProxy");
-    deployFunction = async (hre_, opts, factory, ...args) => ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr);
-  }
+  proxyFactory = await ethers.getContractFactory(opts.proxyClass || "AccessManagedProxy");
+  deployFunction = async (hre_, opts, factory, ...args) =>
+    ozUpgradesDeploy(hre_, opts, factory, ...args, acMgr, skipSelectors);
 
   return hre.upgrades.deployProxy(contractFactory, initializeArgs, {
     ...opts,
@@ -53,7 +48,7 @@ async function deployAMPProxy(contractFactory, initializeArgs = [], opts = {}) {
 }
 
 async function attachAsAMP(contract, ampContractFactory = undefined) {
-  ampContractFactory = ampContractFactory || (await ethers.getContractFactory("AccessManagedProxyS1"));
+  ampContractFactory = ampContractFactory || (await ethers.getContractFactory("AccessManagedProxy"));
   return ampContractFactory.attach(contract);
 }
 

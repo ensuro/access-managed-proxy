@@ -19,9 +19,6 @@ rm -fr $TARGET_DIR 2>/dev/null
 
 mkdir -p $TARGET_DIR
 
-# Generate 1 to 40 skip method contracts
-node scripts/generateAMPSkips.js $(seq -s" " 1 40)
-
 npx hardhat clean
 env COMPILE_MODE=production npx hardhat compile
 
