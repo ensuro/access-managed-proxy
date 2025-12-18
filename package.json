@@ -6,22 +6,22 @@
     "solhint": "solhint -w0 'contracts/**/*.sol'"
   },
   "devDependencies": {
-    "@ensuro/utils": "^0.2.9",
+    "@ensuro/utils": "^0.3.1",
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@openzeppelin/hardhat-upgrades": "^3.9.1",
-    "eslint": "^9.32.0",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "handlebars": "^4.7.8",
-    "hardhat": "^2.26.2",
-    "hardhat-contract-sizer": "^2.10.0",
+    "hardhat": "^2.28.0",
+    "hardhat-contract-sizer": "^2.10.1",
     "hardhat-dependency-compiler": "^1.2.1",
     "hardhat-ignore-warnings": "^0.2.12",
-    "prettier": "^3.6.2",
-    "solhint": "^6.0.0",
+    "prettier": "^3.7.4",
+    "solhint": "^6.0.2",
     "solhint-plugin-prettier": "^0.1.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0",
-    "@openzeppelin/contracts-upgradeable": "^5.4.0"
+    "@openzeppelin/contracts": "^5.5.0",
+    "@openzeppelin/contracts-upgradeable": "^5.5.0"
   }
 }

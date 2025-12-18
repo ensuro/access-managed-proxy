@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.16;
 
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /**
  * @title Dummy implementation contract that supports upgrade and logs methods called
@@ -9,7 +10,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  * @custom:security-contact security@ensuro.co
  * @author Ensuro
  */
-contract DummyImplementation is UUPSUpgradeable {
+contract DummyImplementation is UUPSUpgradeable, Initializable {
   event MethodCalled(bytes4 selector);
 
   /// @custom:oz-upgrades-unsafe-allow constructor
