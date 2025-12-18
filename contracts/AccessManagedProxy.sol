@@ -48,6 +48,7 @@ contract AccessManagedProxy is AccessManagedProxyBase {
     _accessManager = manager;
   }
 
+  // solhint-disable-next-line func-name-mixedcase
   function ACCESS_MANAGER() public view override returns (IAccessManager) {
     return _accessManager;
   }

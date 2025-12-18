@@ -52,6 +52,7 @@ contract AccessManagedProxyM is AccessManagedProxyBase {
     StorageSlot.getAddressSlot(ACCESS_MANAGER_SLOT).value = address(manager);
   }
 
+  // solhint-disable-next-line func-name-mixedcase
   function ACCESS_MANAGER() public view override returns (IAccessManager) {
     return IAccessManager(StorageSlot.getAddressSlot(ACCESS_MANAGER_SLOT).value);
   }

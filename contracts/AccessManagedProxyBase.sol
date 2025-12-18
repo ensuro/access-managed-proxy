@@ -43,6 +43,7 @@ abstract contract AccessManagedProxyBase is ERC1967Proxy {
   /**
    * @notice AccessManager contract that handles the permissions to access the implementation methods
    */
+  // solhint-disable-next-line func-name-mixedcase
   function ACCESS_MANAGER() public view virtual returns (IAccessManager);
 
   /**
