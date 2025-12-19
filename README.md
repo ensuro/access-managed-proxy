@@ -34,18 +34,25 @@ configuration for that method.
 
 More details on the motivation of this idea here: https://forum.openzeppelin.com/t/accessmanagedproxy-is-a-good-idea/41917
 
+Also check https://www.youtube.com/watch?v=DKdwJ9Ap9vM for a presentation on this approach.
+
 ## 📝 Details
 
-The package includes the AccessManagedProxy contract, and AccessManagedProxyS1 to AccessManagedProxyS24 that are
-versions that accept from 1 to 24 methods (selectors) that will be skipped of the access manager check, to reduce gas
-usage or to access immutability on some methods.
+The AccessManagedProxy contract stores the configuration in the storage (uses namespaced storage layout, see EIP-7201),
+but it doesn't include in the proxy functions to modify it. The implementation contracts should add the functions to
+change the access manager (`setAuthority(...)`, following IAccessManaged interface of OZ 5.x) or the passThruMethods.
+
+The AMPUtils library includes several functions to modify the custom storage and other operations like making custom
+access control checks.
+
+Also, an AccessManagedProxyBase abstract contract is provided in case you prefer to use immutable storage or other
+variants.
 
 ## Development
 
 Try running some of the following tasks:
 
 ```shell
-npx hardhat help
-npx hardhat test
 REPORT_GAS=true npx hardhat test
+npx hardhat coverage
 ```
