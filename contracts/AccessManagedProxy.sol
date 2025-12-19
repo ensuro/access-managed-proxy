@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {IAccessManagedProxy} from "./interfaces/IAccessManagedProxy.sol";
 import {AccessManagedProxyBase} from "./AccessManagedProxyBase.sol";
 import {AMPUtils} from "./AMPUtils.sol";
 
@@ -16,7 +17,7 @@ import {AMPUtils} from "./AMPUtils.sol";
  *
  *      The accessManager and the passThruMethods are in the storage, but this contract doesn't include any method
  *      to modify them. They should be modified by the implementation contract (check AMPUtils for functions that
- *      encapsulate this operations).
+ *      encapsulate these operations).
  *
  *      Check https://forum.openzeppelin.com/t/accessmanagedproxy-is-a-good-idea/41917 for a discussion on the
  *      advantages and disadvantages of using it. Also https://www.youtube.com/watch?v=DKdwJ9Ap9vM for a presentation
@@ -53,26 +54,18 @@ contract AccessManagedProxy is AccessManagedProxyBase {
     AMPUtils.setPassThruMethods(passThruMethods);
   }
 
-  /*
-   * @notice Skips the access control if the method called is one of the passThruMethods
-   * @dev See {PASS_THRU_METHODS()}
-   * @param selector The selector of the method called
-   * @return Whether the access control using ACCESS_MANAGER should be skipped or not
-   */
+  /// @inheritdoc AccessManagedProxyBase
   function _skipAC(bytes4 selector) internal view override returns (bool) {
     return AMPUtils.getAccessManagedProxyStorage().skipAc[selector];
   }
 
-  /**
-   * @notice Gives observability to the methods that are skipped from access control
-   * @dev This list is fixed and defined on contract construction
-   * @return methods The list of method selectors that skip ACCESS_MANAGER access control
-   */
+  /// @inheritdoc IAccessManagedProxy
   // solhint-disable-next-line func-name-mixedcase
   function PASS_THRU_METHODS() external view override returns (bytes4[] memory methods) {
     return AMPUtils.getAccessManagedProxyStorage().passThruMethods;
   }
 
+  /// @inheritdoc IAccessManagedProxy
   // solhint-disable-next-line func-name-mixedcase
   function ACCESS_MANAGER() public view override returns (IAccessManager) {
     return AMPUtils.getAccessManagedProxyStorage().accessManager;

@@ -32,9 +32,7 @@ abstract contract AccessManagedProxyBase is ERC1967Proxy, IAccessManagedProxy {
    * @param _data If nonempty, it's used as data in a delegate call to `implementation`. This will typically be an
    *              encoded function call, and allows initializing the storage of the proxy like a Solidity constructor.
    *
-   * Requirements:
-   *
-   * - If `data` is empty, `msg.value` must be zero.
+   * @custom:pre If `_data` is empty, `msg.value` must be zero.
    */
   constructor(address implementation, bytes memory _data) payable ERC1967Proxy(implementation, _data) {}
 
@@ -42,6 +40,7 @@ abstract contract AccessManagedProxyBase is ERC1967Proxy, IAccessManagedProxy {
   // solhint-disable-next-line func-name-mixedcase
   function ACCESS_MANAGER() public view virtual returns (IAccessManager);
 
+  /// @inheritdoc IAccessManagedProxy
   function authority() external view virtual returns (address) {
     return address(ACCESS_MANAGER());
   }
