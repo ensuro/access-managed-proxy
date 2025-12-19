@@ -25,13 +25,11 @@ module.exports = {
     paths: ["@openzeppelin/contracts/access/manager/AccessManager.sol"],
   },
   warnings: {
+    "contracts/AccessManagedProxyBase.sol": {
+      "missing-receive": "off",
+    },
     "contracts/AccessManagedProxy.sol": {
       "missing-receive": "off",
-      "unused-param": "off",
-    },
-    "contracts/amps/AccessManagedProxyS*.sol": {
-      "missing-receive": "off",
-      "unused-param": "off",
     },
   },
 };
