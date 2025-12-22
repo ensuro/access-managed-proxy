@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.16;
 
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {AMPUtils} from "../AMPUtils.sol";
 
 /**
  * @title Dummy implementation contract that supports upgrade and logs methods called
@@ -50,5 +52,19 @@ contract DummyImplementation is UUPSUpgradeable, Initializable {
 
   function pureMethod() external pure returns (uint256) {
     return 123456;
+  }
+
+  function setAuthority(address newAuthority) external {
+    AMPUtils.setAccessManager(IAccessManager(newAuthority));
+  }
+
+  function setPassThruMethods(bytes4[] memory newPTMethods) external {
+    AMPUtils.replacePassThruMethods(newPTMethods);
+  }
+
+  function checkCanCall(bytes memory something) external returns (bytes4 selector) {
+    selector = AMPUtils.makeSelector(something);
+    AMPUtils.checkCanCall(msg.sender, selector);
+    emit MethodCalled(selector);
   }
 }

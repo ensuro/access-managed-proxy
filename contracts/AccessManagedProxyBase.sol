@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {IAccessManagedProxy} from "./interfaces/IAccessManagedProxy.sol";
 
 /**
  * @title AccessManagedProxyBase
@@ -21,10 +22,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
  * @custom:security-contact security@ensuro.co
  * @author Ensuro
  */
-abstract contract AccessManagedProxyBase is ERC1967Proxy {
-  // Error copied from IAccessManaged
-  error AccessManagedUnauthorized(address caller);
-
+abstract contract AccessManagedProxyBase is ERC1967Proxy, IAccessManagedProxy {
   /**
    * @notice Constructor of the proxy, defining the implementation and the access manager
    * @dev Initializes the upgradeable proxy with an initial implementation specified by `implementation` and
@@ -34,17 +32,18 @@ abstract contract AccessManagedProxyBase is ERC1967Proxy {
    * @param _data If nonempty, it's used as data in a delegate call to `implementation`. This will typically be an
    *              encoded function call, and allows initializing the storage of the proxy like a Solidity constructor.
    *
-   * Requirements:
-   *
-   * - If `data` is empty, `msg.value` must be zero.
+   * @custom:pre If `_data` is empty, `msg.value` must be zero.
    */
   constructor(address implementation, bytes memory _data) payable ERC1967Proxy(implementation, _data) {}
 
-  /**
-   * @notice AccessManager contract that handles the permissions to access the implementation methods
-   */
+  /// @inheritdoc IAccessManagedProxy
   // solhint-disable-next-line func-name-mixedcase
   function ACCESS_MANAGER() public view virtual returns (IAccessManager);
+
+  /// @inheritdoc IAccessManagedProxy
+  function authority() external view virtual returns (address) {
+    return address(ACCESS_MANAGER());
+  }
 
   /**
    * @notice Intercepts the super._delegate call to implement access control
@@ -71,8 +70,5 @@ abstract contract AccessManagedProxyBase is ERC1967Proxy {
    * @param selector The selector of the method called
    * @return Whether the access control using ACCESS_MANAGER should be skipped or not
    */
-  // solhint-disable-next-line no-unused-vars
-  function _skipAC(bytes4 selector) internal view virtual returns (bool) {
-    return false;
-  }
+  function _skipAC(bytes4 selector) internal view virtual returns (bool);
 }
