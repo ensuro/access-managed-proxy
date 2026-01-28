@@ -14,6 +14,7 @@ import {AMPUtils} from "../AMPUtils.sol";
  */
 contract DummyImplementation is UUPSUpgradeable, Initializable {
   event MethodCalled(bytes4 selector);
+  event NonStandardMethodCalled(bytes msgData, uint256 value);
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -66,5 +67,15 @@ contract DummyImplementation is UUPSUpgradeable, Initializable {
     selector = AMPUtils.makeSelector(something);
     AMPUtils.checkCanCall(msg.sender, selector);
     emit MethodCalled(selector);
+  }
+
+  receive() external payable {
+    emit MethodCalled(bytes4(keccak256("receive")));
+    emit NonStandardMethodCalled("", msg.value);
+  }
+
+  fallback() external payable {
+    emit MethodCalled(bytes4(keccak256("fallback")));
+    emit NonStandardMethodCalled(msg.data, msg.value);
   }
 }

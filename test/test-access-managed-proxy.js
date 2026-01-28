@@ -2,7 +2,7 @@ const { expect } = require("chai");
 
 const hre = require("hardhat");
 const { ethers } = hre;
-const { tagitVariant, setupAMRole, captureAny } = require("@ensuro/utils/js/utils");
+const { tagitVariant, setupAMRole, captureAny, _W } = require("@ensuro/utils/js/utils");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { deployAMPProxy, attachAsAMP } = require("../js/deployProxy");
 const { ZeroAddress } = ethers;
@@ -341,6 +341,66 @@ variants.forEach((variant) => {
       await expect(dummy.connect(admin).checkCanCall(ethers.toUtf8Bytes("foobar")))
         .to.be.revertedWithCustomError(dummyAsAMP, "AccessManagedUnauthorized")
         .withArgs(admin);
+    });
+
+    it("Checks it rejects ETH unless authorized [?hasAC]", async () => {
+      const { deployProxy, anon, admin, acMgr } = await helpers.loadFixture(variant.fixture);
+      const dummy = await deployProxy();
+      const dummyAsAMP = await attachAsAMP(dummy);
+
+      // Anon sending ETH fails with AccessManagedUnauthorized
+      await expect(anon.sendTransaction({ to: dummy, value: ethers.parseEther("0.5", "ether") }))
+        .to.be.revertedWithCustomError(dummyAsAMP, "AccessManagedUnauthorized")
+        .withArgs(anon);
+
+      const receiveSelector = ethers.keccak256(ethers.toUtf8Bytes("receive")).slice(0, 10);
+
+      // Admin sending ETH is delegated to the implementation
+      await expect(admin.sendTransaction({ to: dummy, value: _W("0.5") }))
+        .to.emit(dummy, "MethodCalled")
+        .withArgs(receiveSelector)
+        .to.emit(dummy, "NonStandardMethodCalled")
+        .withArgs(ethers.toUtf8Bytes(""), _W("0.5"));
+
+      // Make "receive" PUBLIC_ROLE
+      await acMgr.connect(admin).setTargetFunctionRole(dummy, [receiveSelector], await acMgr.PUBLIC_ROLE());
+
+      // Admin sending ETH is delegated to the implementation
+      await expect(anon.sendTransaction({ to: dummy, value: _W("0.5") }))
+        .to.emit(dummy, "MethodCalled")
+        .withArgs(receiveSelector)
+        .to.emit(dummy, "NonStandardMethodCalled")
+        .withArgs(ethers.toUtf8Bytes(""), _W("0.5"));
+    });
+
+    it("Checks it rejects <4 msg.data.length unless fallback authorized [?hasAC]", async () => {
+      const { deployProxy, anon, admin, acMgr } = await helpers.loadFixture(variant.fixture);
+      const dummy = await deployProxy();
+      const dummyAsAMP = await attachAsAMP(dummy);
+
+      // Anon sending ETH fails with AccessManagedUnauthorized
+      await expect(anon.sendTransaction({ to: dummy, data: "0xaabbcc", value: ethers.parseEther("0.5", "ether") }))
+        .to.be.revertedWithCustomError(dummyAsAMP, "AccessManagedUnauthorized")
+        .withArgs(anon);
+
+      const fallbackSelector = ethers.keccak256(ethers.toUtf8Bytes("fallback")).slice(0, 10);
+
+      // Admin sending ETH is delegated to the implementation
+      await expect(admin.sendTransaction({ to: dummy, value: _W("0.5"), data: "0xaabbcc" }))
+        .to.emit(dummy, "MethodCalled")
+        .withArgs(fallbackSelector)
+        .to.emit(dummy, "NonStandardMethodCalled")
+        .withArgs("0xaabbcc", _W("0.5"));
+
+      // Make "fallback" PUBLIC_ROLE
+      await acMgr.connect(admin).setTargetFunctionRole(dummy, [fallbackSelector], await acMgr.PUBLIC_ROLE());
+
+      // Admin sending ETH is delegated to the implementation
+      await expect(anon.sendTransaction({ to: dummy, value: _W("0.5"), data: "0xddbbcc" }))
+        .to.emit(dummy, "MethodCalled")
+        .withArgs(fallbackSelector)
+        .to.emit(dummy, "NonStandardMethodCalled")
+        .withArgs("0xddbbcc", _W("0.5"));
     });
   });
 });
