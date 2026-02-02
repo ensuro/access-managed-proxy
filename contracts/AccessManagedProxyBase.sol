@@ -23,6 +23,9 @@ import {IAccessManagedProxy} from "./interfaces/IAccessManagedProxy.sol";
  * @author Ensuro
  */
 abstract contract AccessManagedProxyBase is ERC1967Proxy, IAccessManagedProxy {
+  bytes4 internal constant RECEIVE_SELECTOR = bytes4(keccak256("receive"));
+  bytes4 internal constant FALLBACK_SELECTOR = bytes4(keccak256("fallback"));
+
   /**
    * @notice Constructor of the proxy, defining the implementation and the access manager
    * @dev Initializes the upgradeable proxy with an initial implementation specified by `implementation` and
@@ -54,7 +57,9 @@ abstract contract AccessManagedProxyBase is ERC1967Proxy, IAccessManagedProxy {
    * This function does not return to its internal call site, it will return directly to the external caller.
    */
   function _delegate(address implementation) internal virtual override {
-    bytes4 selector = bytes4(msg.data[0:4]);
+    bytes4 selector = msg.data.length < 4
+      ? (msg.data.length == 0 ? RECEIVE_SELECTOR : FALLBACK_SELECTOR)
+      : bytes4(msg.data[0:4]);
     bool immediate = _skipAC(selector); // reuse immediate variable both for skipped methods and canCall result
     if (!immediate) {
       (immediate, ) = ACCESS_MANAGER().canCall(msg.sender, address(this), selector);
