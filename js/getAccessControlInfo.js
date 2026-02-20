@@ -20,14 +20,29 @@ async function getAbiFromEtherscan(contractAddress, chainId = "1") {
   throw new Error(`Failed to get ABI from Etherscan: ${data.message}`);
 }
 
-function getContract(contractAddress, abi) {
+function getProvider() {
   const rpcUrl = process.env.RPC_URL;
   if (!rpcUrl) {
     throw new Error("RPC_URL environment variable is required");
   }
-  
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  return new ethers.JsonRpcProvider(rpcUrl);
+}
+
+function getContract(contractAddress, abi) {
+  const provider = getProvider();
   return new ethers.Contract(contractAddress, abi, provider);
+}
+
+/**
+ * Gets the implementation address from an ERC1967 proxy
+ * @param {string} proxyAddress - The proxy contract address
+ * @returns {Promise<string>} The implementation contract address
+ */
+async function getImplementationAddress(proxyAddress) {
+  const provider = getProvider();
+  const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+  const implementationSlotValue = await provider.getStorage(proxyAddress, IMPLEMENTATION_SLOT);
+  return ethers.getAddress("0x" + implementationSlotValue.slice(-40));
 }
 
 /**
@@ -37,19 +52,24 @@ function getContract(contractAddress, abi) {
  * @returns {Promise<Object>} Access control information
  */
 async function getAccessControlInfo(contractAddress, chainId = "1") {
-  const abi = await getAbiFromEtherscan(contractAddress, chainId);
+  const proxyAbi = await getAbiFromEtherscan(contractAddress, chainId);
+  const proxyContract = getContract(contractAddress, proxyAbi);
   
-  const contract = getContract(contractAddress, abi);
+  const accessManager = await proxyContract.ACCESS_MANAGER();
+  const passThruMethods = await proxyContract.PASS_THRU_METHODS();
   
-  const accessManager = await contract.ACCESS_MANAGER();
+  const implementationAddress = await getImplementationAddress(contractAddress);
   
-  const passThruMethods = await contract.PASS_THRU_METHODS();
+  const implementationAbi = await getAbiFromEtherscan(implementationAddress, chainId);
   
   const accessManagerAbi = await getAbiFromEtherscan(accessManager, chainId);
   const accessManagerContract = getContract(accessManager, accessManagerAbi);
   
-  const interface = new ethers.Interface(abi);
+  const interface = new ethers.Interface(implementationAbi);
   const functions = interface.fragments.filter((f) => f.type === "function");
+  
+  const PUBLIC_ROLE = await accessManagerContract.PUBLIC_ROLE();
+  const ADMIN_ROLE = await accessManagerContract.ADMIN_ROLE();
   
   const rolesByMethod = [];
   
@@ -62,23 +82,14 @@ async function getAccessControlInfo(contractAddress, chainId = "1") {
     
     if (!isPassThru) {
       try {
-        const eventFilter = accessManagerContract.filters.TargetFunctionRoleUpdated(contractAddress, selector);
-        const events = await accessManagerContract.queryFilter(eventFilter);
+        roleId = await accessManagerContract.getTargetFunctionRole(contractAddress, selector);
         
-        if (events.length > 0) {
-          const latestEvent = events[events.length - 1];
-          roleId = latestEvent.args.roleId;
-          
-          const PUBLIC_ROLE = await accessManagerContract.PUBLIC_ROLE();
-          const ADMIN_ROLE = await accessManagerContract.ADMIN_ROLE();
-          
-          if (PUBLIC_ROLE && roleId === PUBLIC_ROLE) {
-            roleName = "PUBLIC_ROLE";
-          } else if (ADMIN_ROLE && roleId === ADMIN_ROLE) {
-            roleName = "ADMIN_ROLE";
-          } else {
-            roleName = `ROLE_${roleId.toString()}`;
-          }
+        if (roleId === PUBLIC_ROLE) {
+          roleName = "PUBLIC_ROLE";
+        } else if (roleId === ADMIN_ROLE) {
+          roleName = "ADMIN_ROLE";
+        } else {
+          roleName = `ROLE_${roleId.toString()}`;
         }
       } catch (error) {
         console.warn(`Could not get role for selector ${selector}: ${error.message}`);
@@ -89,7 +100,8 @@ async function getAccessControlInfo(contractAddress, chainId = "1") {
       selector: selector,
       method: func.name,
       fullMethod: func.format("full"),
-      role_id: roleId ? roleId.toString() : null,
+      type: func.stateMutability,
+      role_id: roleId !== null && roleId !== undefined ? roleId.toString() : null,
       role_name: roleName,
       pass_thru: isPassThru
     });
@@ -102,4 +114,4 @@ async function getAccessControlInfo(contractAddress, chainId = "1") {
   };
 }
 
-module.exports = { getContract, getAbiFromEtherscan, getAccessControlInfo };
+module.exports = { getContract, getAbiFromEtherscan, getAccessControlInfo, getImplementationAddress };
