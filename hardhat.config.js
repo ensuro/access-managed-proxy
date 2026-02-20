@@ -4,6 +4,9 @@ require("hardhat-contract-sizer");
 require("hardhat-ignore-warnings");
 require("@nomicfoundation/hardhat-toolbox");
 
+const hhtasks = require("./hhtasks");
+hhtasks.addTasks();
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
