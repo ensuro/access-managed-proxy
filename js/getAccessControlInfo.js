@@ -1,5 +1,8 @@
 const { ethers } = require("ethers");
 
+const PUBLIC_ROLE = 2n ** 64n - 1n;
+const ADMIN_ROLE = 0n;
+
 /**
  * Gets the ABI of a contract from Etherscan
  * @param {string} contractAddress - The contract address
@@ -20,98 +23,98 @@ async function getAbiFromEtherscan(contractAddress, chainId = "1") {
   throw new Error(`Failed to get ABI from Etherscan: ${data.message}`);
 }
 
-function getProvider() {
-  const rpcUrl = process.env.RPC_URL;
-  if (!rpcUrl) {
-    throw new Error("RPC_URL environment variable is required");
-  }
-  return new ethers.JsonRpcProvider(rpcUrl);
-}
-
-function getContract(contractAddress, abi) {
-  const provider = getProvider();
-  return new ethers.Contract(contractAddress, abi, provider);
-}
-
-/**
- * Gets the implementation address from an ERC1967 proxy
- * @param {string} proxyAddress - The proxy contract address
- * @returns {Promise<string>} The implementation contract address
- */
-async function getImplementationAddress(proxyAddress) {
-  const provider = getProvider();
-  const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
-  const implementationSlotValue = await provider.getStorage(proxyAddress, IMPLEMENTATION_SLOT);
-  return ethers.getAddress("0x" + implementationSlotValue.slice(-40));
-}
-
 /**
  * Gets access control information for an AccessManagedProxy contract
- * @param {string} contractAddress - The contract address
- * @param {string} chainId - Chain ID (default: "1")
+ * @param contractAddress - The contract address
+ * @param contractInterface - The interface of the implementation contract (to get function names)
+ * @param opts - Object with some optional parameters:
+ *                  acMgrContract: name of the AccessManager contract (default "AccessManager")
+ *                  ampContract: name of the AccessManagedProxy contract (default "AccessManagedProxy")
  * @returns {Promise<Object>} Access control information
  */
-async function getAccessControlInfo(contractAddress, chainId = "1") {
-  const proxyAbi = await getAbiFromEtherscan(contractAddress, chainId);
-  const proxyContract = getContract(contractAddress, proxyAbi);
-  
+async function getAccessControlInfo(hre, contractAddress, contractInterface, opts = {}) {
+  const proxyContract = await hre.ethers.getContractAt(opts.ampContract || "AccessManagedProxy", contractAddress);
+
   const accessManager = await proxyContract.ACCESS_MANAGER();
   const passThruMethods = await proxyContract.PASS_THRU_METHODS();
-  
-  const implementationAddress = await getImplementationAddress(contractAddress);
-  
-  const implementationAbi = await getAbiFromEtherscan(implementationAddress, chainId);
-  
-  const accessManagerAbi = await getAbiFromEtherscan(accessManager, chainId);
-  const accessManagerContract = getContract(accessManager, accessManagerAbi);
-  
-  const interface = new ethers.Interface(implementationAbi);
-  const functions = interface.fragments.filter((f) => f.type === "function");
-  
-  const PUBLIC_ROLE = await accessManagerContract.PUBLIC_ROLE();
-  const ADMIN_ROLE = await accessManagerContract.ADMIN_ROLE();
-  
+
+  const accessManagerContract = await hre.ethers.getContractAt(opts.acMgrContract || "AccessManager", accessManager);
+
+  const functions = contractInterface.fragments.filter((f) => f.type === "function");
+
+  const roleNames = {};
+  roleNames[PUBLIC_ROLE] = "PUBLIC_ROLE";
+  roleNames[ADMIN_ROLE] = "ADMIN_ROLE";
+
+  const labelEventFilter = accessManagerContract.filters.RoleLabel();
+  for (const lblEvt of await accessManagerContract.queryFilter(labelEventFilter)) {
+    roleNames[lblEvt.args.roleId] = lblEvt.args.label;
+  }
   const rolesByMethod = [];
-  
+
+  const setTargetFunctionFilter = accessManagerContract.filters.TargetFunctionRoleUpdated(contractAddress);
+  const rolesBySelector = Object.fromEntries(
+    (await accessManagerContract.queryFilter(setTargetFunctionFilter)).map((evt) => [
+      evt.args.selector,
+      evt.args.roleId,
+    ])
+  );
+
   for (const func of functions) {
     const selector = func.selector;
-    const isPassThru = passThruMethods.includes(selector);
-    
-    let roleId = null;
-    let roleName = null;
-    
-    if (!isPassThru) {
-      try {
-        roleId = await accessManagerContract.getTargetFunctionRole(contractAddress, selector);
-        
-        if (roleId === PUBLIC_ROLE) {
-          roleName = "PUBLIC_ROLE";
-        } else if (roleId === ADMIN_ROLE) {
-          roleName = "ADMIN_ROLE";
-        } else {
-          roleName = `ROLE_${roleId.toString()}`;
-        }
-      } catch (error) {
-        console.warn(`Could not get role for selector ${selector}: ${error.message}`);
-      }
-    }
-    
+
+    const roleId = rolesBySelector[selector] || ADMIN_ROLE;
+    const roleName = roleNames[roleId] || `ROLE_${roleId.toString}`;
+
     rolesByMethod.push({
       selector: selector,
       method: func.name,
-      fullMethod: func.format("full"),
+      fullMethod: func.format("minimal"),
       type: func.stateMutability,
-      role_id: roleId !== null && roleId !== undefined ? roleId.toString() : null,
-      role_name: roleName,
-      pass_thru: isPassThru
+      roleId: roleId,
+      roleName: roleName,
+      passThru: passThruMethods.includes(selector),
     });
   }
-  
+
+  const includedSelectors = new Set(rolesByMethod.map((x) => x.selector));
+
+  // Check all granted methods are included in the output, even if they are not in the ABI
+  for (const [selector, roleId] of Object.entries(rolesBySelector)) {
+    if (includedSelectors.has(selector)) continue;
+    const roleName = roleNames[roleId] || `ROLE_${roleId.toString}`;
+    rolesByMethod.push({
+      selector: selector,
+      method: null,
+      fullMethod: null,
+      type: null,
+      roleId: roleId,
+      roleName: roleName,
+      passThru: passThruMethods.includes(selector),
+    });
+    includedSelectors.add(selector);
+  }
+  // Complete with all the selectors that are in passThruMethods and not in the ABI nor in TargetFunctionRoleUpdated
+  // events
+  for (const selector of passThruMethods) {
+    if (includedSelectors.has(selector)) continue;
+    rolesByMethod.push({
+      selector: selector,
+      method: null,
+      fullMethod: null,
+      type: null,
+      roleId: ADMIN_ROLE,
+      roleName: roleNames[ADMIN_ROLE],
+      passThru: true,
+    });
+    includedSelectors.add(selector);
+  }
+
   return {
     ACCESS_MANAGER: accessManager,
     PASS_THRU_METHODS: passThruMethods,
-    roles_by_method: rolesByMethod
+    rolesByMethod: rolesByMethod,
   };
 }
 
-module.exports = { getContract, getAbiFromEtherscan, getAccessControlInfo, getImplementationAddress };
+module.exports = { getAbiFromEtherscan, getAccessControlInfo };

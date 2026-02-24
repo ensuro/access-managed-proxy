@@ -19,6 +19,23 @@ module.exports = {
       evmVersion: "cancun",
     },
   },
+  networks: {
+    sepolia: {
+      url: process.env.RPC_URL_SEPOLIA || process.env.RPC_URL,
+      chainId: 11155111,
+    },
+    mainnet: {
+      url: process.env.RPC_URL_MAINNET || process.env.RPC_URL,
+      chainId: 1,
+    },
+    polygon: {
+      url: process.env.RPC_URL_POLYGON || process.env.RPC_URL,
+      chainId: 137,
+    },
+    auto: {
+      url: process.env.RPC_URL,
+    },
+  },
   contractSizer: {
     alphaSort: true,
     runOnCompile: false,
