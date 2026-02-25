@@ -57,7 +57,8 @@ function addTasks() {
         if (chainId === undefined) {
           chainId = parseInt(await hre.network.provider.send("eth_chainId"));
         }
-        const ABI = await getAbiFromEtherscan(implementationAddr, chainId);
+        const apiKey = process.env.ETHERSCAN_API_KEY || "";
+        const ABI = await getAbiFromEtherscan(implementationAddr, chainId, apiKey);
         contractInterface = new ethers.Interface(ABI);
       } else {
         const factory = await ethers.getContractFactory(taskArgs.contractFactory);

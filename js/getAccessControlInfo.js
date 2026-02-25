@@ -7,10 +7,10 @@ const ADMIN_ROLE = 0n;
  * Gets the ABI of a contract from Etherscan
  * @param {string} contractAddress - The contract address
  * @param {string} chainId - Chain ID (default: "1" )
+ * @param {string} apiKey - Etherscan API Key (default: "" )
  * @returns {Promise<Array>} The contract ABI
  */
-async function getAbiFromEtherscan(contractAddress, chainId = "1") {
-  const apiKey = process.env.ETHERSCAN_API_KEY || "";
+async function getAbiFromEtherscan(contractAddress, chainId = "1", apiKey = "") {
   const url = `https://api.etherscan.io/v2/api?module=contract&action=getabi&address=${contractAddress}&chainid=${chainId}&apikey=${apiKey}`;
 
   const response = await fetch(url);
