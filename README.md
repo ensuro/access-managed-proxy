@@ -45,6 +45,16 @@ change the access manager (`setAuthority(...)`, following IAccessManaged interfa
 The AMPUtils library includes several functions to modify the custom storage and other operations like making custom
 access control checks.
 
+When changing the pass-through methods, implementations must use `AMPUtils.replacePassThruMethods`.
+`AMPUtils.setPassThruMethods` is additive: it never clears previously skipped selectors. Pass-through methods must be
+configured through the proxy constructor — implementation initializers must never call `setPassThruMethods` nor
+`replacePassThruMethods`, because the initializer runs before the constructor sets the pass-through list and the
+initializer's entries would silently remain flagged in `skipAc`.
+
+Changing the access manager follows the same rules as an upgrade: an incompatible authority can brick every call that
+goes through the access control check, including the recovery paths. The change must be validated with a fork
+simulation before being applied to a live proxy.
+
 Also, an AccessManagedProxyBase abstract contract is provided in case you prefer to use immutable storage or other
 variants.
 
@@ -56,3 +66,10 @@ Try running some of the following tasks:
 REPORT_GAS=true npx hardhat test
 npx hardhat coverage
 ```
+
+## Audit
+
+The contracts were audited; see
+[`audits/audit_agent_report_2_763f50d3-3741-4440-9eef-5381d8e1ba0f.pdf`](audits/audit_agent_report_2_763f50d3-3741-4440-9eef-5381d8e1ba0f.pdf).
+Our stance on the audit findings is documented in
+[`audits/audit_agent_report_2_findings.md`](audits/audit_agent_report_2_findings.md).
