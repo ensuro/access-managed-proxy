@@ -54,6 +54,10 @@ abstract contract AccessManagedProxyBase is ERC1967Proxy, IAccessManagedProxy {
    * and if so, delegates the current call to `implementation`.
    * @param implementation The implementation contract
    *
+   * When the call is relayed through `AccessManager.execute`, `msg.sender` is the access manager itself (standard
+   * OpenZeppelin AccessManager semantics). Implementations must not treat `msg.sender` being the access manager as
+   * a trust signal nor rely on the caller identity.
+   *
    * This function does not return to its internal call site, it will return directly to the external caller.
    */
   function _delegate(address implementation) internal virtual override {

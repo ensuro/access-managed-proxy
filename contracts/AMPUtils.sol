@@ -37,6 +37,14 @@ library AMPUtils {
     }
   }
 
+  /**
+   * @dev Sets the ACCESS_MANAGER used to validate the calls. It only checks that `accessManager` has code, it
+   *      can't validate its behavior: an incompatible authority will make every non-pass-through call revert.
+   *
+   *      Changing the access manager is equivalent to an upgrade — an inadequate configuration can permanently
+   *      disable all the gated calls, including the recovery paths. It must be validated with a fork simulation
+   *      before being applied to a live proxy.
+   */
   function setAccessManager(IAccessManager accessManager) internal {
     if (address(accessManager).code.length == 0) {
       revert IAccessManagedProxy.AccessManagedInvalidAuthority(address(accessManager));
@@ -45,6 +53,15 @@ library AMPUtils {
     emit IAccessManagedProxy.AuthorityUpdated(address(accessManager));
   }
 
+  /**
+   * @dev Adds the given selectors to the pass-through configuration and marks them to skip the access control.
+   *
+   *      This function is additive: it sets `skipAc[selector] = true` but doesn't clear the selectors that were
+   *      skipped before. Therefore it must not be used to update the pass-through methods; use
+   *      `replacePassThruMethods` instead. It must not be called from an initializer either, because initializers
+   *      run before the proxy constructor sets the pass-through methods and the selectors added there would
+   *      silently remain skipped. Pass-through methods must be configured through the proxy constructor.
+   */
   function setPassThruMethods(bytes4[] memory passThruMethods) internal {
     AccessManagedProxyStorage storage $ = AMPUtils.getAccessManagedProxyStorage();
     $.passThruMethods = new bytes4[](passThruMethods.length);
@@ -55,6 +72,10 @@ library AMPUtils {
     emit IAccessManagedProxy.PassThruMethodsChanged(passThruMethods);
   }
 
+  /**
+   * @dev Replaces the whole pass-through configuration, clearing the `skipAc` entries of the previous methods.
+   *      This is the function that implementation contracts must use to change the pass-through methods.
+   */
   function replacePassThruMethods(bytes4[] memory newPassThruMethods) internal {
     AccessManagedProxyStorage storage $ = AMPUtils.getAccessManagedProxyStorage();
     bytes4[] memory oldPassThruMethods = $.passThruMethods;
